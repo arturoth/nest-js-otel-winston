@@ -8,7 +8,7 @@ export let options = {
 };
 
 export default function () {
-  let ep1 = http.get(`http://localhost:8000/`); // Update with your API endpoint
+  let ep1 = http.get(`http://localhost:8080/`); // Update with your API endpoint
   check(ep1, {
     'status is 200': (r) => r.status === 200,
   });
