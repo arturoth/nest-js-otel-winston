@@ -1,5 +1,6 @@
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import {
   BasicTracerProvider,
@@ -9,6 +10,7 @@ import {
 import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { GrpcInstrumentation } from '@opentelemetry/instrumentation-grpc';
+import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 
 import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
@@ -16,6 +18,7 @@ diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
 import * as winston from 'winston';
 import { WinstonInstrumentation } from '@opentelemetry/instrumentation-winston';
 // https://www.npmjs.com/package/@opentelemetry/instrumentation-winston
+// https://opentelemetry.io/docs/faas/lambda-auto-instrument/
 
 class Tracer {
   private sdk: NodeSDK | null = null;
@@ -24,10 +27,20 @@ class Tracer {
   private nral: string = process.env.NEW_RELIC_LICENSE_KEY;
 
   private exporter = new OTLPTraceExporter({
-    url: `${process.env.OTLP_COLLECTOR}/v1/traces`, // https://otlp.nr-data.net:4318
+    url: `${process.env.OTLP_COLLECTOR}/v1/traces`, // https://otlp.nr-data.net:4318 HTTP
     headers: {
       'api-key': process.env.NEW_RELIC_LICENSE_KEY || this.nral, // Your license key from NewRelic account
     },
+  });
+
+  private metrics = new PeriodicExportingMetricReader({
+    exportIntervalMillis: 10000,
+    exporter: new OTLPMetricExporter({
+      url: `https://otlp.nr-data.net:4317/v1/metrics`, // https://otlp.nr-data.net:4317 gRPC
+      headers: {
+        'api-key': process.env.NEW_RELIC_LICENSE_KEY || this.nral, // Your license key from NewRelic account
+      },
+    }),
   });
 
   private provider = new BasicTracerProvider({
@@ -49,6 +62,7 @@ class Tracer {
 
       this.sdk = new NodeSDK({
         traceExporter: this.exporter,
+        metricReader: this.metrics,
         instrumentations: [
           getNodeAutoInstrumentations({
             // Lets disable fs for now, otherwise we cannot see the traces we want,
@@ -76,8 +90,3 @@ class Tracer {
 }
 
 export default new Tracer();
-
-const logger = winston.createLogger({
-  transports: [new winston.transports.Console()],
-});
-logger.info('foobar');

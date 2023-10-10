@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Header } from '@nestjs/common';
 import {
   HealthCheck,
   HealthCheckService,
@@ -18,6 +18,7 @@ export class HealthController {
 
   @Get()
   @HealthCheck()
+  @Header('Cache-Control', 'none')
   check() {
     const PORT =
       process.env.APP_PORT && Number.isInteger(+process.env.APP_PORT)
