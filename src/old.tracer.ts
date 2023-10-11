@@ -45,12 +45,10 @@ class Tracer {
     exportIntervalMillis: 10000,
   });
 
-  private resource = new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: this.entity,
-  });
-
   private provider = new BasicTracerProvider({
-    resource: this.resource,
+    resource: new Resource({
+      [SemanticResourceAttributes.SERVICE_NAME]: this.entity,
+    }),
   });
 
   public init() {
@@ -65,7 +63,6 @@ class Tracer {
       this.provider.register();
 
       this.sdk = new NodeSDK({
-        resource: this.resource,
         traceExporter: this.exporter,
         metricReader: this.metricReader,
         instrumentations: [
